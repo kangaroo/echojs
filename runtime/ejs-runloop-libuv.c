@@ -41,6 +41,7 @@ _ejs_runloop_add_task_timeout(Task task, void* data, TaskDataDtor dtor, int64_t 
     EJS_NOT_IMPLEMENTED();
 }
 
+void
 _ejs_runloop_remove_task(void* handle)
 {
     EJS_NOT_IMPLEMENTED();
