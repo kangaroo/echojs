@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env nodejs
 var fs = require ("fs");
 
 var atom_def = fs.readFileSync (process.argv[2], "utf-8");
