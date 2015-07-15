@@ -159,7 +159,11 @@ _ejs_generator_specop_scan (EJSObject* obj, EJSValueFunc scan_func)
 #elif TARGET_CPU_X86
                                         (void*)gen->generator_context.__mcontext_data.__ss.__esp
 #elif TARGET_CPU_ARM
+#if defined(__linux__)
+                                        (void*)gen->generator_context.uc_mcontext.arm_sp
+#else
                                         (void*)gen->generator_context.__mcontext_data.__ss.__sp
+#endif
 #elif TARGET_CPU_ARM64
                                         (void*)gen->generator_context.__mcontext_data.__ss.__sp
 #else
