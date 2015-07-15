@@ -146,6 +146,7 @@ function set_target(platform, arch) {
 function set_target_alias(alias) {
     const target_aliases = {
         linux_amd64: { platform: "linux",  arch: "x86_64" },
+        linux_arm:   { platform: "linux",  arch: "arm" },
         osx:         { platform: "darwin", arch: "x86_64" },
         sim:         { platform: "darwin", arch: "x86" },
         dev:         { platform: "darwin", arch: "arm" }
@@ -351,11 +352,14 @@ let sim_bin=`${sim_base}/Developer/usr/bin`;
 let dev_bin=`${dev_base}/Developer/usr/bin`;
 
 function target_llc_args(platform, arch) {
-    let args = [`-march=${arch_info[options.target_arch].llc_arch}`, "-disable-fp-elim" ];
-    if (arch === "arm")
-        args = args.concat(["-mtriple=thumbv7-apple-ios", "-mattr=+v6", "-relocation-model=pic", "-soft-float" ]);
-    if (arch === "aarch64")
-        args = args.concat(["-mtriple=thumbv7s-apple-ios", "-mattr=+fp-armv8", "-relocation-model=pic" ]);
+    let args = []
+    if (platform == "darwin") {
+        args = args.concat([`-march=${arch_info[options.target_arch].llc_arch}`, "-disable-fp-elim" ]);
+        if (arch === "arm")
+            args = args.concat(["-mtriple=thumbv7-apple-ios", "-mattr=+v6", "-relocation-model=pic", "-soft-float" ]);
+        if (arch === "aarch64")
+            args = args.concat(["-mtriple=thumbv7s-apple-ios", "-mattr=+fp-armv8", "-relocation-model=pic" ]);
+    }
     return args;
 }
 
@@ -382,7 +386,7 @@ function target_link_args(platform, arch) {
 
 
 function target_libraries(platform, arch) {
-    if (platform === "linux") return [ "-lpthread", "-luv" ];
+    if (platform === "linux") return [ "-lpthread", "-luv", "-ldl", "-lncurses" ];
 
     if (platform === "darwin") {
         let rv = [ "-framework", "Foundation" ];
@@ -478,9 +482,9 @@ function compileFile(filename, parse_tree, modules, compileCallback) {
     if (options.opt_level > 0)
         opt_args.unshift(`-O${options.opt_level}`);
 
-    debug.log (1, `writing ${ll_filename}`);
+    console.log (1, `writing ${ll_filename}`);
     compiled_module.writeToFile(ll_filename);
-    debug.log (1, `done writing ${ll_filename}`);
+    console.log (1, `done writing ${ll_filename}`);
 
     compiled_modules.push({ filename: options.basename ? path.basename(filename) : filename, module_toplevel: compiled_module.toplevel_name });
 
@@ -499,7 +503,7 @@ function compileFile(filename, parse_tree, modules, compileCallback) {
             process.exit(-1);
         });
         llvm_as.on("exit", (code) => {
-                debug.log(1, `executing '${llvm_commands['opt']} ${opt_args.join(' ')}'`);
+                console.log(1, `executing '${llvm_commands['opt']} ${opt_args.join(' ')}'`);
             let opt = spawn(llvm_commands['opt'], opt_args);
             opt.stderr.on("data", (data) => console.warn(`${data}`));
             opt.on("error", (err) => {
@@ -507,7 +511,7 @@ function compileFile(filename, parse_tree, modules, compileCallback) {
                 process.exit(-1);
             });
             opt.on("exit", (code) => {
-                debug.log(1, `executing '${llvm_commands['llc']} ${llc_args.join(' ')}'`);
+                console.log(1, `executing '${llvm_commands['llc']} ${llc_args.join(' ')}'`);
                 let llc = spawn(llvm_commands['llc'], llc_args);
                 llc.stderr.on("data", (data) => console.warn(`${data}`));
                 llc.on("error", (err) => {
@@ -626,7 +630,7 @@ function do_final_link(main_file, modules) {
 
     if (!options.quiet) console.warn(`${bold()}LINK${reset()} ${output_filename}`);
     
-    debug.log (1, `executing '${target_linker} ${clang_args.join(' ')}'`);
+    console.log (1, `executing '${target_linker} ${clang_args.join(' ')}'`);
 
     if (typeof __ejs != 'undefined') {
         spawn(target_linker, clang_args);
@@ -662,7 +666,7 @@ let main_file = file_args[0];
 if (!options.srcdir)
     options.native_module_dirs.push(relative_to_ejs_exe("../lib"));
 let files = gatherAllModules(file_args, options);
-debug.log (1, () => dumpModules());
+console.log (1, () => dumpModules());
 let allModules = getAllModules();
 
 // now compile them
